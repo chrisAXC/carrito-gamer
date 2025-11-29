@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../config/database');
+const pool = require('../database'); // ← Cambiado a PostgreSQL pool
 
 // Middleware para verificar admin
 const requireAdmin = (req, res, next) => {
@@ -14,10 +14,10 @@ const requireAdmin = (req, res, next) => {
 // Panel de administración
 router.get('/', requireAdmin, async (req, res) => {
     try {
-        const [productCount] = await db.promise().query('SELECT COUNT(*) as count FROM productos');
-        const [userCount] = await db.promise().query('SELECT COUNT(*) as count FROM usuarios');
-        const [orderCount] = await db.promise().query('SELECT COUNT(*) as count FROM ordenes');
-        const [recentOrders] = await db.promise().query(`
+        const productResult = await pool.query('SELECT COUNT(*) as count FROM productos');
+        const userResult = await pool.query('SELECT COUNT(*) as count FROM usuarios');
+        const orderResult = await pool.query('SELECT COUNT(*) as count FROM ordenes');
+        const recentOrdersResult = await pool.query(`
             SELECT o.*, u.nombre as usuario_nombre 
             FROM ordenes o 
             JOIN usuarios u ON o.usuario_id = u.id 
@@ -26,15 +26,15 @@ router.get('/', requireAdmin, async (req, res) => {
         `);
 
         // Procesar órdenes recientes
-        const processedOrders = recentOrders.map(order => ({
+        const processedOrders = recentOrdersResult.rows.map(order => ({
             ...order,
             total: Number(order.total) || 0
         }));
 
         res.render('admin/dashboard', {
-            productCount: productCount[0].count,
-            userCount: userCount[0].count,
-            orderCount: orderCount[0].count,
+            productCount: parseInt(productResult.rows[0].count),
+            userCount: parseInt(userResult.rows[0].count),
+            orderCount: parseInt(orderResult.rows[0].count),
             recentOrders: processedOrders,
             user: req.session.user
         });
@@ -53,10 +53,10 @@ router.get('/', requireAdmin, async (req, res) => {
 // Gestión de productos
 router.get('/products', requireAdmin, async (req, res) => {
     try {
-        const [products] = await db.promise().query('SELECT * FROM productos ORDER BY id DESC');
+        const result = await pool.query('SELECT * FROM productos ORDER BY id DESC');
         
         // Procesar productos para asegurar que los precios sean números
-        const processedProducts = products.map(product => ({
+        const processedProducts = result.rows.map(product => ({
             ...product,
             precio: Number(product.precio) || 0
         }));
@@ -108,8 +108,8 @@ router.post('/products/add', requireAdmin, async (req, res) => {
             }
         }
 
-        await db.promise().query(
-            'INSERT INTO productos (nombre, descripcion, precio, stock, categoria, imagen, marca, especificaciones) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        await pool.query(
+            'INSERT INTO productos (nombre, descripcion, precio, stock, categoria, imagen, marca, especificaciones) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
             [nombre, descripcion, Number(precio), Number(stock), categoria, imagen || '/images/placeholder-product.jpg', marca, especificacionesJSON]
         );
 
@@ -126,16 +126,16 @@ router.post('/products/add', requireAdmin, async (req, res) => {
 // Editar producto - GET
 router.get('/products/edit/:id', requireAdmin, async (req, res) => {
     try {
-        const [products] = await db.promise().query('SELECT * FROM productos WHERE id = ?', [req.params.id]);
+        const result = await pool.query('SELECT * FROM productos WHERE id = $1', [req.params.id]);
         
-        if (products.length === 0) {
+        if (result.rows.length === 0) {
             return res.redirect('/admin/products');
         }
 
         // Procesar producto
         const product = {
-            ...products[0],
-            precio: Number(products[0].precio) || 0
+            ...result.rows[0],
+            precio: Number(result.rows[0].precio) || 0
         };
 
         res.render('admin/edit-product', {
@@ -156,9 +156,9 @@ router.post('/products/edit/:id', requireAdmin, async (req, res) => {
         
         // Validar datos
         if (!nombre || !precio || !stock) {
-            const [products] = await db.promise().query('SELECT * FROM productos WHERE id = ?', [req.params.id]);
+            const result = await pool.query('SELECT * FROM productos WHERE id = $1', [req.params.id]);
             return res.render('admin/edit-product', {
-                product: products[0],
+                product: result.rows[0],
                 user: req.session.user,
                 error: 'Nombre, precio y stock son obligatorios'
             });
@@ -175,17 +175,17 @@ router.post('/products/edit/:id', requireAdmin, async (req, res) => {
             }
         }
 
-        await db.promise().query(
-            'UPDATE productos SET nombre = ?, descripcion = ?, precio = ?, stock = ?, categoria = ?, imagen = ?, marca = ?, especificaciones = ?, activo = ? WHERE id = ?',
-            [nombre, descripcion, Number(precio), Number(stock), categoria, imagen, marca, especificacionesJSON, activo ? 1 : 0, req.params.id]
+        await pool.query(
+            'UPDATE productos SET nombre = $1, descripcion = $2, precio = $3, stock = $4, categoria = $5, imagen = $6, marca = $7, especificaciones = $8, activo = $9 WHERE id = $10',
+            [nombre, descripcion, Number(precio), Number(stock), categoria, imagen, marca, especificacionesJSON, activo ? true : false, req.params.id]
         );
 
         res.redirect('/admin/products');
     } catch (error) {
         console.error('Error al editar producto:', error);
-        const [products] = await db.promise().query('SELECT * FROM productos WHERE id = ?', [req.params.id]);
+        const result = await pool.query('SELECT * FROM productos WHERE id = $1', [req.params.id]);
         res.render('admin/edit-product', {
-            product: products[0],
+            product: result.rows[0],
             user: req.session.user,
             error: 'Error al editar producto: ' + error.message
         });
@@ -195,7 +195,7 @@ router.post('/products/edit/:id', requireAdmin, async (req, res) => {
 // Eliminar producto - POST
 router.post('/products/delete/:id', requireAdmin, async (req, res) => {
     try {
-        await db.promise().query('DELETE FROM productos WHERE id = ?', [req.params.id]);
+        await pool.query('DELETE FROM productos WHERE id = $1', [req.params.id]);
         res.json({ success: true });
     } catch (error) {
         console.error('Error al eliminar producto:', error);
@@ -206,15 +206,15 @@ router.post('/products/delete/:id', requireAdmin, async (req, res) => {
 // Toggle estado del producto
 router.post('/products/toggle/:id', requireAdmin, async (req, res) => {
     try {
-        const [product] = await db.promise().query('SELECT activo FROM productos WHERE id = ?', [req.params.id]);
+        const result = await pool.query('SELECT activo FROM productos WHERE id = $1', [req.params.id]);
         
-        if (product.length === 0) {
+        if (result.rows.length === 0) {
             return res.status(404).json({ success: false, error: 'Producto no encontrado' });
         }
 
-        const newStatus = product[0].activo ? 0 : 1;
+        const newStatus = !result.rows[0].activo;
         
-        await db.promise().query('UPDATE productos SET activo = ? WHERE id = ?', [newStatus, req.params.id]);
+        await pool.query('UPDATE productos SET activo = $1 WHERE id = $2', [newStatus, req.params.id]);
         
         res.json({ 
             success: true, 
