@@ -22,15 +22,20 @@ app.use(session({
     cookie: { secure: false, maxAge: 24 * 60 * 60 * 1000 } // 24 horas
 }));
 
+<<<<<<< HEAD
 // Conexión a PostgreSQL - REEMPLAZA EL MIDDLEWARE ACTUAL
 const pool = require('./database');
 
 // Middleware actualizado para PostgreSQL
+=======
+// En server.js, asegúrate de tener este middleware:
+>>>>>>> 665db919c4853aa95fd1148528a82988132e52f9
 app.use(async (req, res, next) => {
     res.locals.user = req.session.user || null;
     
     if (req.session.user) {
         try {
+<<<<<<< HEAD
             const countResult = await pool.query(
                 'SELECT SUM(cantidad) as total FROM carrito WHERE usuario_id = $1',
                 [req.session.user.id]
@@ -38,6 +43,15 @@ app.use(async (req, res, next) => {
             res.locals.cartCount = countResult.rows[0].total || 0;
         } catch (error) {
             console.log('Error al contar carrito:', error);
+=======
+            const db = require('./config/database');
+            const [countResult] = await db.promise().query(
+                'SELECT SUM(cantidad) as total FROM carrito WHERE usuario_id = ?',
+                [req.session.user.id]
+            );
+            res.locals.cartCount = countResult[0].total || 0;
+        } catch (error) {
+>>>>>>> 665db919c4853aa95fd1148528a82988132e52f9
             res.locals.cartCount = 0;
         }
     } else {
@@ -78,6 +92,7 @@ try {
     console.log('⚠️  Rutas de admin no disponibles aún');
 }
 
+<<<<<<< HEAD
 // Ruta principal - ACTUALIZADA para PostgreSQL
 app.get('/', async (req, res) => {
     try {
@@ -88,6 +103,17 @@ app.get('/', async (req, res) => {
         
         // En PostgreSQL los resultados están en .rows
         const featuredProducts = productsResult.rows.map(product => ({
+=======
+// Ruta principal - CORREGIDA
+app.get('/', async (req, res) => {
+    try {
+        // Si la base de datos está disponible, cargar productos
+        const db = require('./config/database');
+        const [products] = await db.promise().query('SELECT * FROM productos WHERE activo = true LIMIT 8');
+        
+        // Asegurarnos de que los precios sean números
+        const featuredProducts = products.map(product => ({
+>>>>>>> 665db919c4853aa95fd1148528a82988132e52f9
             ...product,
             precio: Number(product.precio) || 0
         }));
@@ -99,7 +125,11 @@ app.get('/', async (req, res) => {
     } catch (error) {
         console.error('Error al cargar productos, usando datos de prueba:', error);
         
+<<<<<<< HEAD
         // Datos de prueba (mantenemos igual)
+=======
+        // Datos de prueba CORREGIDOS con precios como números
+>>>>>>> 665db919c4853aa95fd1148528a82988132e52f9
         const featuredProducts = [
             {
                 id: 1,
@@ -147,6 +177,7 @@ app.get('/health', (req, res) => {
     res.json({ status: 'OK', message: 'Servidor funcionando' });
 });
 
+<<<<<<< HEAD
 // Ruta para probar la conexión a la base de datos
 app.get('/db-test', async (req, res) => {
     try {
@@ -165,9 +196,14 @@ app.get('/db-test', async (req, res) => {
     }
 });
 
+=======
+>>>>>>> 665db919c4853aa95fd1148528a82988132e52f9
 app.listen(PORT, () => {
     console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
     console.log(`🎮 Carrito de compras gamer listo!`);
     console.log(`🔍 Verifica en: http://localhost:${PORT}/health`);
+<<<<<<< HEAD
     console.log(`🗄️  Test DB: http://localhost:${PORT}/db-test`);
+=======
+>>>>>>> 665db919c4853aa95fd1148528a82988132e52f9
 });
