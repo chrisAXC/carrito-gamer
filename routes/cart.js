@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../config/database');
+const pool = require('../database'); // ← Cambiado a PostgreSQL pool
 
 // Middleware para verificar autenticación
 const requireAuth = (req, res, next) => {
@@ -18,13 +18,13 @@ router.get('/', requireAuth, async (req, res) => {
             SELECT c.*, p.nombre, p.precio, p.imagen, p.stock, p.marca
             FROM carrito c 
             JOIN productos p ON c.producto_id = p.id 
-            WHERE c.usuario_id = ?
+            WHERE c.usuario_id = $1
         `;
         
-        const [cartItems] = await db.promise().query(query, [req.session.user.id]);
+        const result = await pool.query(query, [req.session.user.id]);
         
         // Procesar items para asegurar que los precios sean números
-        const processedCartItems = cartItems.map(item => ({
+        const processedCartItems = result.rows.map(item => ({
             ...item,
             precio: Number(item.precio) || 0
         }));
@@ -56,12 +56,12 @@ router.post('/add', requireAuth, async (req, res) => {
         const userId = req.session.user.id;
 
         // Verificar si el producto existe y tiene stock
-        const [product] = await db.promise().query(
-            'SELECT * FROM productos WHERE id = ? AND activo = true AND stock > 0',
+        const productResult = await pool.query(
+            'SELECT * FROM productos WHERE id = $1 AND activo = true AND stock > 0',
             [productId]
         );
 
-        if (product.length === 0) {
+        if (productResult.rows.length === 0) {
             return res.status(400).json({ 
                 success: false, 
                 error: 'Producto no disponible' 
@@ -69,15 +69,15 @@ router.post('/add', requireAuth, async (req, res) => {
         }
 
         // Verificar si el producto ya está en el carrito
-        const [existing] = await db.promise().query(
-            'SELECT * FROM carrito WHERE usuario_id = ? AND producto_id = ?',
+        const existingResult = await pool.query(
+            'SELECT * FROM carrito WHERE usuario_id = $1 AND producto_id = $2',
             [userId, productId]
         );
 
-        if (existing.length > 0) {
+        if (existingResult.rows.length > 0) {
             // Verificar stock disponible
-            const newQuantity = existing[0].cantidad + quantity;
-            if (newQuantity > product[0].stock) {
+            const newQuantity = existingResult.rows[0].cantidad + quantity;
+            if (newQuantity > productResult.rows[0].stock) {
                 return res.status(400).json({ 
                     success: false, 
                     error: 'No hay suficiente stock disponible' 
@@ -85,13 +85,13 @@ router.post('/add', requireAuth, async (req, res) => {
             }
 
             // Actualizar cantidad
-            await db.promise().query(
-                'UPDATE carrito SET cantidad = cantidad + ? WHERE usuario_id = ? AND producto_id = ?',
+            await pool.query(
+                'UPDATE carrito SET cantidad = cantidad + $1 WHERE usuario_id = $2 AND producto_id = $3',
                 [quantity, userId, productId]
             );
         } else {
             // Verificar stock disponible
-            if (quantity > product[0].stock) {
+            if (quantity > productResult.rows[0].stock) {
                 return res.status(400).json({ 
                     success: false, 
                     error: 'No hay suficiente stock disponible' 
@@ -99,21 +99,21 @@ router.post('/add', requireAuth, async (req, res) => {
             }
 
             // Agregar nuevo item
-            await db.promise().query(
-                'INSERT INTO carrito (usuario_id, producto_id, cantidad) VALUES (?, ?, ?)',
+            await pool.query(
+                'INSERT INTO carrito (usuario_id, producto_id, cantidad) VALUES ($1, $2, $3)',
                 [userId, productId, quantity]
             );
         }
 
         // Obtener nuevo conteo del carrito
-        const [countResult] = await db.promise().query(
-            'SELECT SUM(cantidad) as total FROM carrito WHERE usuario_id = ?',
+        const countResult = await pool.query(
+            'SELECT SUM(cantidad) as total FROM carrito WHERE usuario_id = $1',
             [userId]
         );
 
         res.json({ 
             success: true, 
-            cartCount: countResult[0].total || 0 
+            cartCount: parseInt(countResult.rows[0].total) || 0 
         });
     } catch (error) {
         console.error('Error al agregar al carrito:', error);
@@ -134,28 +134,28 @@ router.put('/update/:id', requireAuth, async (req, res) => {
         }
 
         // Obtener información del producto
-        const [cartItem] = await db.promise().query(
+        const cartItemResult = await pool.query(
             `SELECT c.*, p.stock 
              FROM carrito c 
              JOIN productos p ON c.producto_id = p.id 
-             WHERE c.id = ? AND c.usuario_id = ?`,
+             WHERE c.id = $1 AND c.usuario_id = $2`,
             [itemId, userId]
         );
 
-        if (cartItem.length === 0) {
+        if (cartItemResult.rows.length === 0) {
             return res.status(404).json({ success: false, error: 'Item no encontrado' });
         }
 
         // Verificar stock
-        if (quantity > cartItem[0].stock) {
+        if (quantity > cartItemResult.rows[0].stock) {
             return res.status(400).json({ 
                 success: false, 
                 error: 'No hay suficiente stock disponible' 
             });
         }
 
-        await db.promise().query(
-            'UPDATE carrito SET cantidad = ? WHERE id = ? AND usuario_id = ?',
+        await pool.query(
+            'UPDATE carrito SET cantidad = $1 WHERE id = $2 AND usuario_id = $3',
             [quantity, itemId, userId]
         );
 
@@ -172,24 +172,24 @@ router.delete('/remove/:id', requireAuth, async (req, res) => {
         const itemId = req.params.id;
         const userId = req.session.user.id;
 
-        const [result] = await db.promise().query(
-            'DELETE FROM carrito WHERE id = ? AND usuario_id = ?',
+        const result = await pool.query(
+            'DELETE FROM carrito WHERE id = $1 AND usuario_id = $2',
             [itemId, userId]
         );
 
-        if (result.affectedRows === 0) {
+        if (result.rowCount === 0) {
             return res.status(404).json({ success: false, error: 'Item no encontrado' });
         }
 
         // Obtener nuevo conteo del carrito
-        const [countResult] = await db.promise().query(
-            'SELECT SUM(cantidad) as total FROM carrito WHERE usuario_id = ?',
+        const countResult = await pool.query(
+            'SELECT SUM(cantidad) as total FROM carrito WHERE usuario_id = $1',
             [userId]
         );
 
         res.json({ 
             success: true, 
-            cartCount: countResult[0].total || 0 
+            cartCount: parseInt(countResult.rows[0].total) || 0 
         });
     } catch (error) {
         console.error('Error al eliminar del carrito:', error);
