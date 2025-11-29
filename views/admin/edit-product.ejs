@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editar Producto - GameTech</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="/css/style.css" rel="stylesheet">
+</head>
+<body>
+    <%- include('../partials/navbar') %>
+
+    <div class="container-fluid py-4">
+        <div class="row">
+            <!-- Sidebar -->
+            <div class="col-md-3 col-lg-2 bg-dark sidebar">
+                <div class="position-sticky pt-3">
+                    <ul class="nav flex-column">
+                        <li class="nav-item">
+                            <a class="nav-link text-white" href="/admin">
+                                <i class="fas fa-tachometer-alt me-2"></i>
+                                Dashboard
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-white" href="/admin/products">
+                                <i class="fas fa-box me-2"></i>
+                                Productos
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link active text-white" href="/admin/products/add">
+                                <i class="fas fa-plus me-2"></i>
+                                Agregar Producto
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-white" href="/">
+                                <i class="fas fa-store me-2"></i>
+                                Ver Tienda
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Main content -->
+            <div class="col-md-9 col-lg-10 ms-sm-auto px-4">
+                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                    <h1 class="h2 fw-bold">
+                        <i class="fas fa-edit me-2"></i>Editar Producto
+                    </h1>
+                    <a href="/admin/products" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left me-2"></i>Volver a Productos
+                    </a>
+                </div>
+
+                <% if (error) { %>
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <%= error %>
+                    </div>
+                <% } %>
+
+                <div class="card">
+                    <div class="card-body">
+                        <form action="/admin/products/edit/<%= product.id %>" method="POST">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="nombre" class="form-label">Nombre del Producto *</label>
+                                        <input type="text" class="form-control" id="nombre" name="nombre" value="<%= product.nombre %>" required>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="descripcion" class="form-label">Descripción</label>
+                                        <textarea class="form-control" id="descripcion" name="descripcion" rows="3"><%= product.descripcion || '' %></textarea>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="precio" class="form-label">Precio *</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text">$</span>
+                                                    <input type="number" class="form-control" id="precio" name="precio" step="0.01" min="0" value="<%= product.precio %>" required>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="stock" class="form-label">Stock *</label>
+                                                <input type="number" class="form-control" id="stock" name="stock" min="0" value="<%= product.stock %>" required>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="categoria" class="form-label">Categoría</label>
+                                        <select class="form-control" id="categoria" name="categoria">
+                                            <option value="Periféricos" <%= product.categoria === 'Periféricos' ? 'selected' : '' %>>Periféricos</option>
+                                            <option value="Componentes" <%= product.categoria === 'Componentes' ? 'selected' : '' %>>Componentes</option>
+                                            <option value="Audio" <%= product.categoria === 'Audio' ? 'selected' : '' %>>Audio</option>
+                                            <option value="Monitores" <%= product.categoria === 'Monitores' ? 'selected' : '' %>>Monitores</option>
+                                            <option value="Muebles" <%= product.categoria === 'Muebles' ? 'selected' : '' %>>Muebles</option>
+                                            <option value="Accesorios" <%= product.categoria === 'Accesorios' ? 'selected' : '' %>>Accesorios</option>
+                                            <option value="Streaming" <%= product.categoria === 'Streaming' ? 'selected' : '' %>>Streaming</option>
+                                            <option value="Controles" <%= product.categoria === 'Controles' ? 'selected' : '' %>>Controles</option>
+                                            <option value="Laptops" <%= product.categoria === 'Laptops' ? 'selected' : '' %>>Laptops</option>
+                                            <option value="Redes" <%= product.categoria === 'Redes' ? 'selected' : '' %>>Redes</option>
+                                            <option value="Gabinetes" <%= product.categoria === 'Gabinetes' ? 'selected' : '' %>>Gabinetes</option>
+                                            <option value="Refrigeración" <%= product.categoria === 'Refrigeración' ? 'selected' : '' %>>Refrigeración</option>
+                                            <option value="Creatividad" <%= product.categoria === 'Creatividad' ? 'selected' : '' %>>Creatividad</option>
+                                            <option value="Consolas" <%= product.categoria === 'Consolas' ? 'selected' : '' %>>Consolas</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="imagen" class="form-label">URL de la Imagen</label>
+                                        <input type="url" class="form-control" id="imagen" name="imagen" value="<%= product.imagen %>">
+                                        <% if (product.imagen) { %>
+                                            <div class="mt-2">
+                                                <img src="<%= product.imagen %>" alt="Vista previa" class="img-thumbnail" style="max-height: 150px;" onerror="this.style.display='none'">
+                                            </div>
+                                        <% } %>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="marca" class="form-label">Marca</label>
+                                        <input type="text" class="form-control" id="marca" name="marca" value="<%= product.marca || '' %>">
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="especificaciones" class="form-label">Especificaciones (JSON)</label>
+                                        <textarea class="form-control" id="especificaciones" name="especificaciones" rows="4"><%= product.especificaciones ? JSON.stringify(product.especificaciones, null, 2) : '' %></textarea>
+                                    </div>
+
+                                    <div class="mb-3 form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="activo" name="activo" <%= product.activo ? 'checked' : '' %>>
+                                        <label class="form-check-label" for="activo">Producto Activo</label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                <a href="/admin/products" class="btn btn-secondary me-md-2">Cancelar</a>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save me-2"></i>Actualizar Producto
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
