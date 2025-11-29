@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../config/database');
+const pool = require('../database'); // ← Cambiado a PostgreSQL pool
 const PDFDocument = require('pdfkit');
 
 // Middleware para verificar autenticación
@@ -29,18 +29,20 @@ router.get('/', requireAuth, async (req, res) => {
         
         if (isAdmin) {
             // Admin ve todas las órdenes
-            [orders] = await db.promise().query(`
+            const result = await pool.query(`
                 SELECT o.*, u.nombre as usuario_nombre, u.email 
                 FROM ordenes o 
                 JOIN usuarios u ON o.usuario_id = u.id 
                 ORDER BY o.fecha_orden DESC
             `);
+            orders = result.rows;
         } else {
             // Cliente ve solo sus órdenes
-            [orders] = await db.promise().query(
-                'SELECT * FROM ordenes WHERE usuario_id = ? ORDER BY fecha_orden DESC',
+            const result = await pool.query(
+                'SELECT * FROM ordenes WHERE usuario_id = $1 ORDER BY fecha_orden DESC',
                 [req.session.user.id]
             );
+            orders = result.rows;
         }
         
         // Procesar órdenes
@@ -70,26 +72,26 @@ router.get('/checkout', requireAuth, async (req, res) => {
             return res.redirect('/');
         }
 
-        const [cartItems] = await db.promise().query(
+        const result = await pool.query(
             `SELECT c.*, p.nombre, p.precio, p.imagen 
              FROM carrito c 
              JOIN productos p ON c.producto_id = p.id 
-             WHERE c.usuario_id = ?`,
+             WHERE c.usuario_id = $1`,
             [req.session.user.id]
         );
 
-        if (cartItems.length === 0) {
+        if (result.rows.length === 0) {
             return res.redirect('/cart');
         }
 
         let total = 0;
-        cartItems.forEach(item => {
+        result.rows.forEach(item => {
             const precio = Number(item.precio) || 0;
             total += precio * item.cantidad;
         });
 
         res.render('pages/checkout', { 
-            cartItems: cartItems,
+            cartItems: result.rows,
             total: total
         });
     } catch (error) {
@@ -109,21 +111,21 @@ router.post('/process', requireAuth, async (req, res) => {
         const { metodo_pago, direccion_entrega, tipo_entrega } = req.body;
         const userId = req.session.user.id;
 
-        const [cartItems] = await db.promise().query(
+        const cartResult = await pool.query(
             `SELECT c.*, p.nombre, p.precio, p.stock
              FROM carrito c 
              JOIN productos p ON c.producto_id = p.id 
-             WHERE c.usuario_id = ?`,
+             WHERE c.usuario_id = $1`,
             [userId]
         );
 
-        if (cartItems.length === 0) {
+        if (cartResult.rows.length === 0) {
             return res.status(400).json({ success: false, error: 'Carrito vacío' });
         }
 
         // Calcular total con IVA
         let subtotal = 0;
-        cartItems.forEach(item => {
+        cartResult.rows.forEach(item => {
             const precio = Number(item.precio) || 0;
             subtotal += precio * item.cantidad;
         });
@@ -132,36 +134,36 @@ router.post('/process', requireAuth, async (req, res) => {
         const total = subtotal + iva;
 
         // Crear orden con estado 'procesando' inicial
-        const [orderResult] = await db.promise().query(
-            'INSERT INTO ordenes (usuario_id, total, metodo_pago, direccion_entrega, tipo_entrega, estado) VALUES (?, ?, ?, ?, ?, ?)',
+        const orderResult = await pool.query(
+            'INSERT INTO ordenes (usuario_id, total, metodo_pago, direccion_entrega, tipo_entrega, estado) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
             [userId, total, metodo_pago, direccion_entrega, tipo_entrega, 'procesando']
         );
 
-        const orderId = orderResult.insertId;
+        const orderId = orderResult.rows[0].id;
 
         // Crear detalles de la orden
-        for (const item of cartItems) {
+        for (const item of cartResult.rows) {
             const precio = Number(item.precio) || 0;
-            await db.promise().query(
-                'INSERT INTO orden_detalles (orden_id, producto_id, cantidad, precio_unitario) VALUES (?, ?, ?, ?)',
+            await pool.query(
+                'INSERT INTO orden_detalles (orden_id, producto_id, cantidad, precio_unitario) VALUES ($1, $2, $3, $4)',
                 [orderId, item.producto_id, item.cantidad, precio]
             );
 
             // Actualizar stock
-            await db.promise().query(
-                'UPDATE productos SET stock = stock - ? WHERE id = ?',
+            await pool.query(
+                'UPDATE productos SET stock = stock - $1 WHERE id = $2',
                 [item.cantidad, item.producto_id]
             );
         }
 
         // Vaciar carrito
-        await db.promise().query('DELETE FROM carrito WHERE usuario_id = ?', [userId]);
+        await pool.query('DELETE FROM carrito WHERE usuario_id = $1', [userId]);
 
         // Simular proceso de pago y cambiar estado a 'completada' después de 2 segundos
         setTimeout(async () => {
             try {
-                await db.promise().query(
-                    'UPDATE ordenes SET estado = ? WHERE id = ?',
+                await pool.query(
+                    'UPDATE ordenes SET estado = $1 WHERE id = $2',
                     ['completada', orderId]
                 );
                 console.log(`Orden #${orderId} marcada como completada`);
@@ -183,18 +185,18 @@ router.post('/process', requireAuth, async (req, res) => {
 // Página de éxito después del pago
 router.get('/success/:id', requireAuth, async (req, res) => {
     try {
-        const [orders] = await db.promise().query(
-            'SELECT * FROM ordenes WHERE id = ? AND usuario_id = ?',
+        const result = await pool.query(
+            'SELECT * FROM ordenes WHERE id = $1 AND usuario_id = $2',
             [req.params.id, req.session.user.id]
         );
 
-        if (orders.length === 0) {
+        if (result.rows.length === 0) {
             return res.redirect('/');
         }
 
         const order = {
-            ...orders[0],
-            total: Number(orders[0].total) || 0
+            ...result.rows[0],
+            total: Number(result.rows[0].total) || 0
         };
 
         res.render('pages/order-success', {
@@ -214,19 +216,21 @@ router.get('/:id', requireAuth, async (req, res) => {
         
         if (isAdmin) {
             // Admin puede ver cualquier orden
-            [orders] = await db.promise().query(`
+            const result = await pool.query(`
                 SELECT o.*, u.nombre as usuario_nombre 
                 FROM ordenes o 
                 JOIN usuarios u ON o.usuario_id = u.id 
-                WHERE o.id = ?`,
+                WHERE o.id = $1`,
                 [req.params.id]
             );
+            orders = result.rows;
         } else {
             // Cliente solo ve sus órdenes
-            [orders] = await db.promise().query(
-                'SELECT * FROM ordenes WHERE id = ? AND usuario_id = ?',
+            const result = await pool.query(
+                'SELECT * FROM ordenes WHERE id = $1 AND usuario_id = $2',
                 [req.params.id, req.session.user.id]
             );
+            orders = result.rows;
         }
 
         if (orders.length === 0) {
@@ -240,15 +244,15 @@ router.get('/:id', requireAuth, async (req, res) => {
             total: Number(orders[0].total) || 0
         };
 
-        const [orderDetails] = await db.promise().query(
+        const detailsResult = await pool.query(
             `SELECT od.*, p.nombre, p.imagen 
              FROM orden_detalles od 
              JOIN productos p ON od.producto_id = p.id 
-             WHERE od.orden_id = ?`,
+             WHERE od.orden_id = $1`,
             [req.params.id]
         );
 
-        const processedDetails = orderDetails.map(item => ({
+        const processedDetails = detailsResult.rows.map(item => ({
             ...item,
             precio_unitario: Number(item.precio_unitario) || 0
         }));
@@ -273,21 +277,23 @@ router.get('/:id/ticket', requireAuth, async (req, res) => {
         let isAdmin = req.session.user.rol === 'admin';
         
         if (isAdmin) {
-            [orders] = await db.promise().query(`
+            const result = await pool.query(`
                 SELECT o.*, u.nombre as usuario_nombre, u.email, u.telefono 
                 FROM ordenes o 
                 JOIN usuarios u ON o.usuario_id = u.id 
-                WHERE o.id = ?`,
+                WHERE o.id = $1`,
                 [req.params.id]
             );
+            orders = result.rows;
         } else {
-            [orders] = await db.promise().query(
+            const result = await pool.query(
                 `SELECT o.*, u.nombre as usuario_nombre, u.email, u.telefono 
                  FROM ordenes o 
                  JOIN usuarios u ON o.usuario_id = u.id 
-                 WHERE o.id = ? AND o.usuario_id = ?`,
+                 WHERE o.id = $1 AND o.usuario_id = $2`,
                 [req.params.id, req.session.user.id]
             );
+            orders = result.rows;
         }
 
         if (orders.length === 0) {
@@ -301,15 +307,15 @@ router.get('/:id/ticket', requireAuth, async (req, res) => {
             total: Number(orders[0].total) || 0
         };
 
-        const [orderDetails] = await db.promise().query(
+        const detailsResult = await pool.query(
             `SELECT od.*, p.nombre 
              FROM orden_detalles od 
              JOIN productos p ON od.producto_id = p.id 
-             WHERE od.orden_id = ?`,
+             WHERE od.orden_id = $1`,
             [req.params.id]
         );
 
-        const processedDetails = orderDetails.map(item => ({
+        const processedDetails = detailsResult.rows.map(item => ({
             ...item,
             precio_unitario: Number(item.precio_unitario) || 0
         }));
@@ -419,8 +425,8 @@ router.put('/:id/status', requireAuth, requireAdmin, async (req, res) => {
             return res.status(400).json({ success: false, error: 'Estado inválido' });
         }
 
-        await db.promise().query(
-            'UPDATE ordenes SET estado = ? WHERE id = ?',
+        await pool.query(
+            'UPDATE ordenes SET estado = $1 WHERE id = $2',
             [estado, ordenId]
         );
 
@@ -441,12 +447,12 @@ router.post('/:id/cancel', requireAuth, async (req, res) => {
         const userId = req.session.user.id;
 
         // Verificar que la orden pertenece al usuario y está en estado pendiente o procesando
-        const [orders] = await db.promise().query(
-            'SELECT * FROM ordenes WHERE id = ? AND usuario_id = ? AND estado IN (?, ?)',
+        const result = await pool.query(
+            'SELECT * FROM ordenes WHERE id = $1 AND usuario_id = $2 AND estado IN ($3, $4)',
             [ordenId, userId, 'pendiente', 'procesando']
         );
 
-        if (orders.length === 0) {
+        if (result.rows.length === 0) {
             return res.status(404).json({ 
                 success: false, 
                 error: 'Orden no encontrada o no se puede cancelar' 
@@ -454,20 +460,20 @@ router.post('/:id/cancel', requireAuth, async (req, res) => {
         }
 
         // Cambiar estado a cancelada
-        await db.promise().query(
-            'UPDATE ordenes SET estado = ? WHERE id = ?',
+        await pool.query(
+            'UPDATE ordenes SET estado = $1 WHERE id = $2',
             ['cancelada', ordenId]
         );
 
         // Devolver productos al stock
-        const [orderDetails] = await db.promise().query(
-            'SELECT * FROM orden_detalles WHERE orden_id = ?',
+        const detailsResult = await pool.query(
+            'SELECT * FROM orden_detalles WHERE orden_id = $1',
             [ordenId]
         );
 
-        for (const item of orderDetails) {
-            await db.promise().query(
-                'UPDATE productos SET stock = stock + ? WHERE id = ?',
+        for (const item of detailsResult.rows) {
+            await pool.query(
+                'UPDATE productos SET stock = stock + $1 WHERE id = $2',
                 [item.cantidad, item.producto_id]
             );
         }
