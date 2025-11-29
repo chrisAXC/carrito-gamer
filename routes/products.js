@@ -1,14 +1,14 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../config/database');
+const pool = require('../database'); // ← Cambiado a PostgreSQL pool
 
 // Mostrar todos los productos
 router.get('/', async (req, res) => {
     try {
-        const [products] = await db.promise().query('SELECT * FROM productos WHERE activo = true');
+        const result = await pool.query('SELECT * FROM productos WHERE activo = true');
         
         // Asegurarnos de que los precios sean números
-        const processedProducts = products.map(product => ({
+        const processedProducts = result.rows.map(product => ({
             ...product,
             precio: Number(product.precio) || 0
         }));
@@ -88,9 +88,9 @@ router.get('/', async (req, res) => {
 // Ver detalles de un producto
 router.get('/:id', async (req, res) => {
     try {
-        const [products] = await db.promise().query('SELECT * FROM productos WHERE id = ?', [req.params.id]);
+        const result = await pool.query('SELECT * FROM productos WHERE id = $1', [req.params.id]);
         
-        if (products.length === 0) {
+        if (result.rows.length === 0) {
             return res.status(404).render('pages/error', { 
                 error: 'Producto no encontrado',
                 user: req.session.user 
@@ -99,8 +99,8 @@ router.get('/:id', async (req, res) => {
         
         // Asegurar que el precio sea número
         const product = {
-            ...products[0],
-            precio: Number(products[0].precio) || 0
+            ...result.rows[0],
+            precio: Number(result.rows[0].precio) || 0
         };
         
         res.render('pages/product-detail', { 
