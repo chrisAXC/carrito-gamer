@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../config/database');
+const pool = require('../database'); // ← Cambiado a PostgreSQL pool
 
 // Login
 router.get('/login', (req, res) => {
@@ -16,13 +16,14 @@ router.post('/login', async (req, res) => {
     try {
         const { email, password, redirect = '/' } = req.body;
         
-        const [users] = await db.promise().query(
-            'SELECT * FROM usuarios WHERE email = ? AND password = ?', 
+        // PostgreSQL - Cambiado a pool.query y parámetros $1, $2
+        const result = await pool.query(
+            'SELECT * FROM usuarios WHERE email = $1 AND password = $2', 
             [email, password]
         );
         
-        if (users.length > 0) {
-            req.session.user = users[0];
+        if (result.rows.length > 0) {
+            req.session.user = result.rows[0];
             res.redirect(redirect);
         } else {
             res.render('pages/login', { 
@@ -55,13 +56,13 @@ router.post('/register', async (req, res) => {
     try {
         const { nombre, email, password, telefono, direccion, estado, municipio, codigo_postal, redirect = '/' } = req.body;
         
-        // Verificar si el usuario ya existe
-        const [existingUsers] = await db.promise().query(
-            'SELECT * FROM usuarios WHERE email = ?', 
+        // Verificar si el usuario ya existe - PostgreSQL
+        const existingResult = await pool.query(
+            'SELECT * FROM usuarios WHERE email = $1', 
             [email]
         );
         
-        if (existingUsers.length > 0) {
+        if (existingResult.rows.length > 0) {
             return res.render('pages/register', { 
                 error: 'El email ya está registrado', 
                 user: null,
@@ -69,19 +70,14 @@ router.post('/register', async (req, res) => {
             });
         }
         
-        // Crear nuevo usuario
-        const [result] = await db.promise().query(
-            'INSERT INTO usuarios (nombre, email, password, telefono, direccion, estado, municipio, codigo_postal) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        // Crear nuevo usuario - PostgreSQL (RETURNING * para obtener el usuario creado)
+        const result = await pool.query(
+            'INSERT INTO usuarios (nombre, email, password, telefono, direccion, estado, municipio, codigo_postal) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
             [nombre, email, password, telefono, direccion, estado, municipio, codigo_postal]
         );
         
         // Iniciar sesión automáticamente
-        req.session.user = {
-            id: result.insertId,
-            nombre,
-            email,
-            rol: 'cliente'
-        };
+        req.session.user = result.rows[0];
         
         res.redirect(redirect);
     } catch (error) {
