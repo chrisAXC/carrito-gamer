@@ -1,10 +1,6 @@
-
-CREATE DATABASE IF NOT EXISTS carrito_gamer;
-USE carrito_gamer;
-
 -- Tabla de usuarios
-CREATE TABLE usuarios (
-    id INT AUTO_INCREMENT PRIMARY KEY,
+CREATE TABLE IF NOT EXISTS usuarios (
+    id SERIAL PRIMARY KEY,
     nombre VARCHAR(100) NOT NULL,
     email VARCHAR(100) UNIQUE NOT NULL,
     password VARCHAR(255) NOT NULL,
@@ -13,13 +9,13 @@ CREATE TABLE usuarios (
     estado VARCHAR(50),
     municipio VARCHAR(50),
     codigo_postal VARCHAR(10),
-    rol ENUM('cliente', 'admin') DEFAULT 'cliente',
+    rol VARCHAR(20) DEFAULT 'cliente' CHECK (rol IN ('cliente', 'admin')),
     fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Tabla de productos
-CREATE TABLE productos (
-    id INT AUTO_INCREMENT PRIMARY KEY,
+CREATE TABLE IF NOT EXISTS productos (
+    id SERIAL PRIMARY KEY,
     nombre VARCHAR(200) NOT NULL,
     descripcion TEXT,
     precio DECIMAL(10,2) NOT NULL,
@@ -27,52 +23,51 @@ CREATE TABLE productos (
     categoria VARCHAR(100),
     imagen VARCHAR(500),
     marca VARCHAR(100),
-    especificaciones JSON,
+    especificaciones JSONB,
     activo BOOLEAN DEFAULT true,
     fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-
 -- Tabla del carrito
-CREATE TABLE carrito (
-    id INT AUTO_INCREMENT PRIMARY KEY,
+CREATE TABLE IF NOT EXISTS carrito (
+    id SERIAL PRIMARY KEY,
     usuario_id INT,
     producto_id INT,
     cantidad INT NOT NULL,
     fecha_agregado TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (usuario_id) REFERENCES usuarios(id),
-    FOREIGN KEY (producto_id) REFERENCES productos(id)
+    FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE,
+    FOREIGN KEY (producto_id) REFERENCES productos(id) ON DELETE CASCADE
 );
 
 -- Tabla de órdenes
-CREATE TABLE ordenes (
-    id INT AUTO_INCREMENT PRIMARY KEY,
+CREATE TABLE IF NOT EXISTS ordenes (
+    id SERIAL PRIMARY KEY,
     usuario_id INT,
     total DECIMAL(10,2) NOT NULL,
-    estado ENUM('pendiente', 'procesando', 'completada', 'cancelada') DEFAULT 'pendiente',
-    metodo_pago ENUM('tarjeta', 'paypal', 'efectivo') NOT NULL,
+    estado VARCHAR(20) DEFAULT 'pendiente' CHECK (estado IN ('pendiente', 'procesando', 'completada', 'cancelada')),
+    metodo_pago VARCHAR(20) NOT NULL CHECK (metodo_pago IN ('tarjeta', 'paypal', 'efectivo')),
     direccion_entrega TEXT,
-    tipo_entrega ENUM('domicilio', 'tienda') NOT NULL,
+    tipo_entrega VARCHAR(20) NOT NULL CHECK (tipo_entrega IN ('domicilio', 'tienda')),
     fecha_orden TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+    FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
 );
 
 -- Tabla de detalles de orden
-CREATE TABLE orden_detalles (
-    id INT AUTO_INCREMENT PRIMARY KEY,
+CREATE TABLE IF NOT EXISTS orden_detalles (
+    id SERIAL PRIMARY KEY,
     orden_id INT,
     producto_id INT,
     cantidad INT NOT NULL,
     precio_unitario DECIMAL(10,2) NOT NULL,
-    FOREIGN KEY (orden_id) REFERENCES ordenes(id),
-    FOREIGN KEY (producto_id) REFERENCES productos(id)
+    FOREIGN KEY (orden_id) REFERENCES ordenes(id) ON DELETE CASCADE,
+    FOREIGN KEY (producto_id) REFERENCES productos(id) ON DELETE CASCADE
 );
 
 -- Insertar usuario administrador
-INSERT INTO usuarios (nombre, email, password, telefono, direccion, estado, municipio, codigo_postal, rol) VALUES
-('christian', 'chris1@gmail.com', '78667', '8767868', 'huehuetoca', 'Estado de México', 'urbi', '64393', 'admin');
-select * from usuarios;
--- Insertar productos gamer (los 20 productos que proporcionaste)
+INSERT INTO usuarios (nombre, email, password, telefono, direccion, estado, municipio, codigo_postal, rol) 
+VALUES ('christian', 'chris1@gmail.com', '78667', '8767868', 'huehuetoca', 'Estado de México', 'urbi', '64393', 'admin')
+ON CONFLICT (email) DO NOTHING;
+
 INSERT INTO productos (nombre, descripcion, precio, stock, categoria, imagen, marca, especificaciones) VALUES
 ('Teclado Mecánico Razer BlackWidow V3', 'Teclado mecánico gaming con switches Green clicky y iluminación RGB Chroma', 1899.00, 25, 'Periféricos', 'https://assets2.razerzone.com/images/pnx.assets/61e6b001a030d66e792cad0043aa30c5/razer-blackwidow-v3-pro-usp2-mobile.jpg', 'Razer', '{"tipo": "Mecánico", "switches": "Green Clicky", "conexion": "USB-C", "rgb": true, "anti-ghosting": "N-Key Rollover"}'),
 ('Mouse Logitech G Pro X Superlight', 'Mouse gaming inalámbrico ultraligero 63g, sensor HERO 25K DPI', 2499.00, 30, 'Periféricos', 'https://i.makeagif.com/media/2-18-2024/pdXIms.gif', 'Logitech', '{"dpi": 25600, "peso": "63g", "conexion": "Wireless", "bateria": "70 horas", "botones": 5}'),
@@ -87,10 +82,13 @@ INSERT INTO productos (nombre, descripcion, precio, stock, categoria, imagen, ma
 ('Mousepad SteelSeries QcK Heavy XXL', 'Mousepad gaming extra grande 900x400mm, superficie optimizada para gaming', 899.00, 40, 'Accesorios', 'https://images.ctfassets.net/w5r1fvmogo3f/3ArM4tdCXkmoBdXgLyzYzm/be070f4aa708d1a973b9834fff993b20/700x_about_qck_heavy_family.png', 'SteelSeries', '{"dimensiones": "900x400x6mm", "material": "Superficie tela, base goma", "color": "Negro"}'),
 ('Webcam Logitech Brio 4K', 'Cámara web 4K Ultra HD, HDR, micrófonos duales con cancelación de ruido', 4299.00, 16, 'Streaming', 'https://resource.logitech.com/w_1440,h_810,ar_16:9,c_fill,q_auto,f_auto,dpr_1.0/d_transparent.gif/content/dam/logitech/en/products/webcams/mx-brio/learn/mx-brio-intro-video-poster.jpg', 'Logitech', '{"resolucion": "4K Ultra HD", "hdr": true, "microfonos": 2, "enfoque_automatico": true, "zoom": "5x digital"}'),
 ('Control Xbox Elite Series 2', 'Control inalámbrico premium, palancas intercambiables, ajustes personalizables', 3899.00, 20, 'Controles', 'https://platform.theverge.com/wp-content/uploads/sites/2/chorus/uploads/chorus_asset/file/24041446/xboxelitergb.gif?quality=90&strip=all&crop=0,0,100,100', 'Microsoft', '{"inalambrico": true, "bateria": "40 horas", "palancas": "4 intercambiables", "botones": "6 personalizables"}'),
-('Laptop ASUS ROG Strix G16', 'Laptop gaming Intel i7-13650HX, RTX 4060 8GB, 16GB RAM, SSD 1TB', 32999.00, 6, 'Laptops', 'https://dlcdnwebimgs.asus.com/gain/378C75D6-8210-4DA7-AAE9-84B48458B085', 'ASUS', '{"procesador": "Intel i7-13650HX", "gpu": "RTX 4060 8GB", "ram": "16GB DDR5", "almacenamiento": "1TB SSD", "pantalla": "16\\" 165Hz"}'),
+('Laptop ASUS ROG Strix G16', 'Laptop gaming Intel i7-13650HX, RTX 4060 8GB, 16GB RAM, SSD 1TB', 32999.00, 6, 'Laptops', 'https://dlcdnwebimgs.asus.com/gain/378C75D6-8210-4DA7-AAE9-84B48458B085', 'ASUS', '{"procesador": "Intel i7-13650HX", "gpu": "RTX 4060 8GB", "ram": "16GB DDR5", "almacenamiento": "1TB SSD", "pantalla": "16\" 165Hz"}'),
 ('Router ASUS ROG Rapture GT-AX11000', 'Router gaming WiFi 6, tri-band, puertos 2.5G, VPN Fusion', 8999.00, 10, 'Redes', 'https://dlcdnwebimgs.asus.com/files/media/448E0EC5-0F53-440D-B754-D537AD116C1F/v1/img/top/power_saving-2.gif', 'ASUS', '{"wifi": "WiFi 6 (802.11ax)", "bandas": "Tri-band", "velocidad": "11000Mbps", "puertos": "1x 2.5G, 4x Gigabit"}'),
 ('Micrófono Blue Yeti Nano', 'Micrófono condensador USB, calidad de estudio, patrones cardioide y omnidireccional', 2899.00, 18, 'Audio', 'https://cambiosystem.com/wp-content/uploads/2024/05/yeti-nano-cardioid.gif', 'Blue', '{"tipo": "Condensador", "patrones": "Cardioide, Omnidireccional", "conexion": "USB", "frecuencia": "20Hz-20kHz"}'),
 ('Gabinete Lian Li O11 Dynamic', 'Gabinete mid-tower, panel lateral templado, soporte para 9 ventiladores', 3299.00, 15, 'Gabinetes', 'https://i.redd.it/4ujfn3n263ca1.gif', 'Lian Li', '{"tipo": "Mid-Tower", "panel": "Templado", "ventiladores": "Soporte 9", "fuente": "No incluida"}'),
 ('Kit Ventiladores Corsair LL120 RGB', 'Kit de 3 ventiladores RGB 120mm, iluminación LED dual loop, control iCUE', 2199.00, 28, 'Refrigeración', 'https://cdn.cs.1worldsync.com/syndication/mediaserver/inlinecontent/all/6f4/6ea/6f46ea652b3a416b3bcbe636858b2ad8/width(1200).gif', 'Corsair', '{"cantidad": 3, "tamaño": "120mm", "rgb": "LED Dual Loop", "control": "Software iCUE"}'),
 ('Tableta Wacom Intuos Pro', 'Tableta gráfica profesional, lápiz Pro Pen 2, 8192 niveles de presión', 6999.00, 12, 'Creatividad', 'https://rapidfireart.com/wp-content/uploads/2017/09/RapidFireArt-Coloring-IronMan-Wacom-Intuos-Pro-Paper-Edition-.gif', 'Wacom', '{"area": "Medium", "niveles_presion": 8192, "conexion": "USB/Wireless", "compatibilidad": "Windows/Mac"}'),
-('Consola PlayStation 5 Standard', 'Consola PS5 con lector de discos 4K UHD Blu-ray, SSD 825GB, control DualSense', 13999.00, 5, 'Consolas', 'https://media1.giphy.com/media/v1.Y2lkPTZjMDliOTUyeXdqYjZycHljNDdidXBndGJwYTg1cGx5bnJzYmE3OWkzbGtlb3ZvbiZlcD12MV9naWZzX3NlYXJjaCZjdD1n/Sl1PEQk8fKeqcPDCEl/source.gif', 'Sony', '{"almacenamiento": "825GB SSD", "resolucion": "4K 120Hz", "control": "DualSense", "compatibilidad": "PS4"}');
+('Consola PlayStation 5 Standard', 'Consola PS5 con lector de discos 4K UHD Blu-ray, SSD 825GB, control DualSense', 13999.00, 5, 'Consolas', 'https://media1.giphy.com/media/v1.Y2lkPTZjMDliOTUyeXdqYjZycHljNDdidXBndGJwYTg1cGx5bnJzYmE3OWkzbGtlb3ZvbiZlcD12MV9naWZzX3NlYXJjaCZjdD1n/Sl1PEQk8fKeqcPDCEl/source.gif', 'Sony', '{"almacenamiento": "825GB SSD", "resolucion": "4K 120Hz", "control": "DualSense", "compatibilidad": "PS4"}')
+ON CONFLICT DO NOTHING;
+
+SELECT * FROM productos;
