@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editar Producto - ChrisShop</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #6c63ff;
+            --secondary-color: #2a2a3c;
+            --dark-color: #121212;
+            --light-color: #f8f9fa;
+        }
+        
+        body {
+            background-color: var(--light-color);
+            color: #333; /* Texto oscuro para mejor legibilidad */
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .admin-header {
+            background: linear-gradient(135deg, var(--secondary-color), #1a1a2e);
+            color: white !important; /* Forzar color blanco */
+        }
+        
+        .admin-header .navbar-brand,
+        .admin-header .navbar-nav a {
+            color: white !important;
+        }
+        
+        .card {
+            border: none;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            border-radius: 12px;
+            background: white;
+        }
+        
+        .card-header {
+            background: linear-gradient(135deg, #ffffff, #f8f9fa) !important;
+            border-bottom: 2px solid var(--primary-color);
+            color: var(--secondary-color) !important;
+        }
+        
+        .card-header h4 {
+            color: var(--secondary-color) !important;
+            font-weight: 700;
+        }
+        
+        .form-label {
+            font-weight: 600;
+            color: var(--secondary-color);
+            margin-bottom: 8px;
+        }
+        
+        .form-control, .form-select {
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            padding: 10px 15px;
+            transition: all 0.3s ease;
+            background-color: white;
+            color: #333;
+        }
+        
+        .form-control:focus, .form-select:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 0.2rem rgba(108, 99, 255, 0.25);
+            background-color: white;
+            color: #333;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-color), #5a52d5);
+            border: none;
+            border-radius: 8px;
+            padding: 12px 25px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(108, 99, 255, 0.4);
+            background: linear-gradient(135deg, #5a52d5, #4a42c5);
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 25px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-secondary:hover {
+            background: #5a6268;
+            transform: translateY(-2px);
+        }
+        
+        .input-group-text {
+            background-color: var(--primary-color);
+            color: white;
+            border: 2px solid var(--primary-color);
+            font-weight: 600;
+        }
+        
+        .specifications-box {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border-radius: 10px;
+            padding: 20px;
+            border-left: 4px solid var(--primary-color);
+        }
+        
+        .specifications-box textarea {
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+        
+        .form-check-input:checked {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+        
+        .alert {
+            border-radius: 10px;
+            border: none;
+            padding: 15px 20px;
+        }
+        
+        .alert-danger {
+            background: linear-gradient(135deg, #fee, #fdd);
+            color: #721c24;
+            border-left: 4px solid #dc3545;
+        }
+        
+        .alert-success {
+            background: linear-gradient(135deg, #eff, #dfd);
+            color: #155724;
+            border-left: 4px solid #28a745;
+        }
+        
+        .text-primary {
+            color: var(--primary-color) !important;
+        }
+        
+        /* Mejorar la legibilidad de todos los textos */
+        h1, h2, h3, h4, h5, h6 {
+            color: var(--secondary-color);
+            font-weight: 700;
+        }
+        
+        .text-muted {
+            color: #6c757d !important;
+        }
+        
+        .form-text {
+            color: #6c757d !important;
+        }
+        
+        /* Estilos específicos para el navbar */
+        .navbar-dark .navbar-brand,
+        .navbar-dark .navbar-nav .nav-link {
+            color: rgba(255, 255, 255, 0.95) !important;
+        }
+        
+        .navbar-dark .navbar-toggler {
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+        
+        .btn-outline-light {
+            border-color: rgba(255, 255, 255, 0.5);
+            color: white;
+        }
+        
+        .btn-outline-light:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar Admin -->
+    <nav class="navbar navbar-expand-lg navbar-dark admin-header">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="/admin">
+                <i class="fas fa-crown me-2"></i>ChrisShop Admin
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#adminNavbar">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="adminNavbar">
+                <div class="navbar-nav ms-auto">
+                    <a href="/admin/products" class="btn btn-outline-light btn-sm">
+                        <i class="fas fa-arrow-left me-1"></i>Volver a Productos
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container py-5">
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <div class="card">
+                    <div class="card-header bg-white py-4">
+                        <h4 class="mb-0 text-dark">
+                            <i class="fas fa-edit me-2 text-primary"></i>
+                            Editar Producto
+                        </h4>
+                    </div>
+                    <div class="card-body p-4">
+                        <!-- Verificación segura de variables -->
+                        <% if (typeof error !== 'undefined' && error) { %>
+                            <div class="alert alert-danger mb-4">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                <strong>Error:</strong> <%= error %>
+                            </div>
+                        <% } %>
+
+                        <% if (typeof success !== 'undefined' && success) { %>
+                            <div class="alert alert-success mb-4">
+                                <i class="fas fa-check-circle me-2"></i>
+                                <strong>Éxito:</strong> <%= success %>
+                            </div>
+                        <% } %>
+
+                        <!-- Verificar que product existe -->
+                        <% if (typeof product === 'undefined' || product === null) { %>
+                            <div class="alert alert-danger">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                No se pudo cargar la información del producto.
+                            </div>
+                            <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                                <a href="/admin/products" class="btn btn-secondary">
+                                    <i class="fas fa-arrow-left me-1"></i>Volver a Productos
+                                </a>
+                            </div>
+                        <% } else { %>
+                            <form action="/admin/products/update/<%= product.id %>" method="POST" enctype="multipart/form-data">
+                                <div class="row">
+                                    <div class="col-md-6 mb-4">
+                                        <label for="nombre" class="form-label">Nombre del Producto *</label>
+                                        <input type="text" class="form-control" id="nombre" name="nombre" 
+                                               value="<%= product.nombre %>" required>
+                                    </div>
+                                    
+                                    <div class="col-md-6 mb-4">
+                                        <label for="precio" class="form-label">Precio *</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text">$</span>
+                                            <input type="number" class="form-control" id="precio" name="precio" 
+                                                   step="0.01" min="0" value="<%= parseFloat(product.precio).toFixed(2) %>" required>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-6 mb-4">
+                                        <label for="marca" class="form-label">Marca</label>
+                                        <input type="text" class="form-control" id="marca" name="marca" 
+                                               value="<%= product.marca || '' %>" placeholder="Ej: Razer, Logitech, etc.">
+                                    </div>
+                                    
+                                    <div class="col-md-6 mb-4">
+                                        <label for="stock" class="form-label">Stock *</label>
+                                        <input type="number" class="form-control" id="stock" name="stock" 
+                                               min="0" value="<%= product.stock || 0 %>" required>
+                                    </div>
+                                </div>
+
+                                <div class="mb-4">
+                                    <label for="descripcion" class="form-label">Descripción *</label>
+                                    <textarea class="form-control" id="descripcion" name="descripcion" 
+                                              rows="5" required placeholder="Describe las características principales del producto..."><%= product.descripcion %></textarea>
+                                </div>
+
+                                <div class="mb-4">
+                                    <label for="imagen" class="form-label">URL de Imagen</label>
+                                    <input type="text" class="form-control" id="imagen" name="imagen" 
+                                           value="<%= product.imagen || '' %>" placeholder="https://ejemplo.com/imagen.jpg">
+                                    <div class="form-text mt-2">
+                                        <i class="fas fa-info-circle me-1"></i>
+                                        Imagen actual: 
+                                        <% if (product.imagen) { %>
+                                            <a href="<%= product.imagen %>" target="_blank" class="text-primary">Ver imagen</a>
+                                        <% } else { %>
+                                            <span class="text-muted">No hay imagen configurada</span>
+                                        <% } %>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-6 mb-4">
+                                        <label for="categoria" class="form-label">Categoría *</label>
+                                        <select class="form-select" id="categoria" name="categoria" required>
+                                            <option value="">Seleccionar categoría</option>
+                                            <option value="Periféricos" <%= product.categoria === 'Periféricos' ? 'selected' : '' %>>Periféricos</option>
+                                            <option value="Audio" <%= product.categoria === 'Audio' ? 'selected' : '' %>>Audio</option>
+                                            <option value="Monitores" <%= product.categoria === 'Monitores' ? 'selected' : '' %>>Monitores</option>
+                                            <option value="Componentes" <%= product.categoria === 'Componentes' ? 'selected' : '' %>>Componentes</option>
+                                            <option value="Almacenamiento" <%= product.categoria === 'Almacenamiento' ? 'selected' : '' %>>Almacenamiento</option>
+                                            <option value="Memoria" <%= product.categoria === 'Memoria' ? 'selected' : '' %>>Memoria</option>
+                                            <option value="Fuentes" <%= product.categoria === 'Fuentes' ? 'selected' : '' %>>Fuentes</option>
+                                            <option value="Accesorios" <%= product.categoria === 'Accesorios' ? 'selected' : '' %>>Accesorios</option>
+                                            <option value="Streaming" <%= product.categoria === 'Streaming' ? 'selected' : '' %>>Streaming</option>
+                                            <option value="Controles" <%= product.categoria === 'Controles' ? 'selected' : '' %>>Controles</option>
+                                            <option value="Laptops" <%= product.categoria === 'Laptops' ? 'selected' : '' %>>Laptops</option>
+                                            <option value="Redes" <%= product.categoria === 'Redes' ? 'selected' : '' %>>Redes</option>
+                                            <option value="Gabinetes" <%= product.categoria === 'Gabinetes' ? 'selected' : '' %>>Gabinetes</option>
+                                            <option value="Refrigeración" <%= product.categoria === 'Refrigeración' ? 'selected' : '' %>>Refrigeración</option>
+                                            <option value="Creatividad" <%= product.categoria === 'Creatividad' ? 'selected' : '' %>>Creatividad</option>
+                                            <option value="Consolas" <%= product.categoria === 'Consolas' ? 'selected' : '' %>>Consolas</option>
+                                            <option value="Muebles" <%= product.categoria === 'Muebles' ? 'selected' : '' %>>Muebles</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="col-md-6 mb-4">
+                                        <label class="form-label d-block">Estado del Producto</label>
+                                        <div class="form-check form-switch mt-2">
+                                            <input class="form-check-input" type="checkbox" id="activo" name="activo" value="true" 
+                                                   <%= product.activo ? 'checked' : '' %> style="transform: scale(1.2);">
+                                            <label class="form-check-label fw-medium" for="activo">
+                                                Producto activo y visible
+                                            </label>
+                                        </div>
+                                        <small class="form-text text-muted">
+                                            Si está desactivado, el producto no será visible en la tienda
+                                        </small>
+                                    </div>
+                                </div>
+
+                                <!-- Campo para especificaciones JSON -->
+                                <div class="mb-4">
+                                    <label for="especificaciones" class="form-label">Especificaciones Técnicas (JSON)</label>
+                                    <div class="specifications-box">
+                                        <small class="text-muted d-block mb-3">
+                                            <i class="fas fa-code me-1"></i>
+                                            Formato JSON. Ejemplo: {"tipo": "Mecánico", "switches": "Green", "rgb": true, "conexion": "USB-C"}
+                                        </small>
+                                        <textarea class="form-control" id="especificaciones" name="especificaciones" 
+                                                  rows="6" placeholder='{"caracteristica": "valor"}'><%= product.especificaciones ? JSON.stringify(product.especificaciones, null, 2) : '' %></textarea>
+                                    </div>
+                                </div>
+
+                                <div class="d-grid gap-2 d-md-flex justify-content-md-end border-top pt-4 mt-4">
+                                    <a href="/admin/products" class="btn btn-secondary me-md-2 px-4">
+                                        <i class="fas fa-times me-2"></i>Cancelar
+                                    </a>
+                                    <button type="submit" class="btn btn-primary px-4">
+                                        <i class="fas fa-save me-2"></i>Actualizar Producto
+                                    </button>
+                                </div>
+                            </form>
+                        <% } %>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Validación del formulario
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.querySelector('form');
+            if (form) {
+                form.addEventListener('submit', function(e) {
+                    const precio = parseFloat(document.getElementById('precio').value);
+                    const stock = parseInt(document.getElementById('stock').value);
+                    const especificaciones = document.getElementById('especificaciones').value;
+                    
+                    // Validar precio
+                    if (precio < 0 || isNaN(precio)) {
+                        e.preventDefault();
+                        alert('❌ El precio debe ser un número válido y no puede ser negativo');
+                        return;
+                    }
+                    
+                    // Validar stock
+                    if (stock < 0 || isNaN(stock)) {
+                        e.preventDefault();
+                        alert('❌ El stock debe ser un número válido y no puede ser negativo');
+                        return;
+                    }
+                    
+                    // Validar JSON de especificaciones (si se ingresó algo)
+                    if (especificaciones.trim() !== '') {
+                        try {
+                            JSON.parse(especificaciones);
+                        } catch (error) {
+                            e.preventDefault();
+                            alert('❌ El formato de especificaciones JSON no es válido. Por favor, corrige el formato.\n\nEjemplo válido:\n{\n  "tipo": "Mecánico",\n  "switches": "Green",\n  "rgb": true\n}');
+                            return;
+                        }
+                    }
+                });
+            }
+
+            // Mejorar la experiencia de usuario
+            const inputs = document.querySelectorAll('input, textarea, select');
+            inputs.forEach(input => {
+                input.addEventListener('focus', function() {
+                    this.parentElement.classList.add('focused');
+                });
+                input.addEventListener('blur', function() {
+                    this.parentElement.classList.remove('focused');
+                });
+            });
+        });
+    </script>
+</body>
+</html>

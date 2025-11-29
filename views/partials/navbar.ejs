@@ -1,0 +1,104 @@
+<nav class="navbar navbar-expand-lg navbar-dark">
+    <div class="container">
+        <a class="navbar-brand fw-bold" href="/">
+            <i class="fas fa-gamepad me-2"></i>ChrisShop
+        </a>
+        
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav me-auto">
+                <li class="nav-item">
+                    <a class="nav-link" href="/">Inicio</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/products">Productos</a>
+                </li>
+                <% if (user && user.rol === 'admin') { %>
+                <li class="nav-item">
+                    <a class="nav-link" href="/admin">
+                        <i class="fas fa-cog me-1"></i>Admin
+                    </a>
+                </li>
+                <% } %>
+            </ul>
+            
+            <ul class="navbar-nav">
+                <% if (user) { %>
+                    <!-- SOLO CLIENTES VEN EL CARRITO -->
+                    <% if (user.rol === 'cliente') { %>
+                    <li class="nav-item">
+                        <a class="nav-link position-relative" href="/cart">
+                            <i class="fas fa-shopping-cart"></i> Carrito
+                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-primary" id="cart-counter">
+                                <%= typeof cartCount !== 'undefined' ? cartCount : 0 %>
+                            </span>
+                        </a>
+                    </li>
+                    <% } %>
+                    
+                    <li class="nav-item">
+                        <a class="nav-link" href="/orders">
+                            <i class="fas fa-history"></i> 
+                            <% if (user.rol === 'admin') { %>
+                                Todas las Compras
+                            <% } else { %>
+                                Mis Compras
+                            <% } %>
+                        </a>
+                    </li>
+                    
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-user"></i> <%= user.nombre %>
+                            <% if (user.rol === 'admin') { %>
+                                <span class="badge bg-warning ms-1">Admin</span>
+                            <% } else { %>
+                                <span class="badge bg-info ms-1">Cliente</span>
+                            <% } %>
+                        </a>
+                        <ul class="dropdown-menu">
+                            <% if (user.rol === 'admin') { %>
+                                <li><a class="dropdown-item" href="/admin">
+                                    <i class="fas fa-cog me-2"></i>Panel de Administración
+                                </a></li>
+                                <li><a class="dropdown-item" href="/admin/products">
+                                    <i class="fas fa-boxes me-2"></i>Gestionar Productos
+                                </a></li>
+                                <li><a class="dropdown-item" href="/admin/products/add">
+                                    <i class="fas fa-plus me-2"></i>Agregar Producto
+                                </a></li>
+                                <li><hr class="dropdown-divider"></li>
+                            <% } else { %>
+                                <li><a class="dropdown-item" href="/orders">
+                                    <i class="fas fa-history me-2"></i>Mis Compras
+                                </a></li>
+                                <li><a class="dropdown-item" href="/cart">
+                                    <i class="fas fa-shopping-cart me-2"></i>Mi Carrito
+                                </a></li>
+                                <li><hr class="dropdown-divider"></li>
+                            <% } %>
+                            <li><a class="dropdown-item" href="/logout">
+                                <i class="fas fa-sign-out-alt me-2"></i>Cerrar Sesión
+                            </a></li>
+                        </ul>
+                    </li>
+                <% } else { %>
+                    <!-- USUARIOS NO REGISTRADOS -->
+                    <li class="nav-item">
+                        <a class="nav-link" href="/login">
+                            <i class="fas fa-sign-in-alt me-2"></i>Iniciar Sesión
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/register">
+                            <i class="fas fa-user-plus me-2"></i>Registrarse
+                        </a>
+                    </li>
+                <% } %>
+            </ul>
+        </div>
+    </div>
+</nav>
