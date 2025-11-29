@@ -91,4 +91,3 @@ INSERT INTO productos (nombre, descripcion, precio, stock, categoria, imagen, ma
 ('Consola PlayStation 5 Standard', 'Consola PS5 con lector de discos 4K UHD Blu-ray, SSD 825GB, control DualSense', 13999.00, 5, 'Consolas', 'https://media1.giphy.com/media/v1.Y2lkPTZjMDliOTUyeXdqYjZycHljNDdidXBndGJwYTg1cGx5bnJzYmE3OWkzbGtlb3ZvbiZlcD12MV9naWZzX3NlYXJjaCZjdD1n/Sl1PEQk8fKeqcPDCEl/source.gif', 'Sony', '{"almacenamiento": "825GB SSD", "resolucion": "4K 120Hz", "control": "DualSense", "compatibilidad": "PS4"}')
 ON CONFLICT DO NOTHING;
 
-SELECT * FROM productos;
